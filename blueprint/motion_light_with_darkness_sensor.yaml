@@ -1,0 +1,62 @@
+blueprint:
+  name: Motion-activated Light with Binary Darkness Sensor (Looping Delay)
+  description: "Turn on the light when it's dark and motion is detected. Turn off after no motion for a set time, with reset if motion continues."
+  domain: automation
+  input:
+    light_target:
+      name: Light
+      description: The light to control
+      selector:
+        target:
+          entity:
+            domain: light
+    motion_sensor:
+      name: Motion Sensor
+      description: Sensor to detect motion
+      selector:
+        entity:
+          domain: binary_sensor
+          device_class: motion
+    light_sensor:
+      name: Light Sensor (Binary)
+      description: Sensor to detect if it’s dark (binary sensor)
+      selector:
+        entity:
+          domain: binary_sensor
+          device_class: light
+    delay_off:
+      name: Delay before turning off
+      description: "Time to wait before turning off after motion stops (in seconds)"
+      default: 60
+      selector:
+        number:
+          min: 5
+          max: 600
+          unit_of_measurement: seconds
+
+mode: single
+
+trigger:
+  - platform: state
+    entity_id: !input motion_sensor
+    to: "on"
+
+condition:
+  - condition: state
+    entity_id: !input light_sensor
+    state: "off"  # Assuming 'off' means it’s dark
+
+action:
+  - service: light.turn_on
+    target: !input light_target
+
+  - repeat:
+      while:
+        - condition: state
+          entity_id: !input motion_sensor
+          state: "on"
+      sequence:
+        - delay: !input delay_off
+
+  - service: light.turn_off
+    target: !input light_target
